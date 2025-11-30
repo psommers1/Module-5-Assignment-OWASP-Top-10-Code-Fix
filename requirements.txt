@@ -1,0 +1,20 @@
+# OWASP Top 10 Code Fix - Python Dependencies
+# Author: Paul Sommers
+# Course: SDEV245 - Secure Software Development
+
+# Flask web framework and extensions
+Flask==3.0.0
+flask-limiter==3.5.0
+Werkzeug==3.0.1
+
+# Database and ORM (if needed for examples)
+SQLAlchemy==2.0.23
+
+# HTTP requests library
+requests==2.31.0
+
+# Security libraries
+bcrypt==4.1.1
+
+# Optional: For enhanced validation
+email-validator==2.1.0

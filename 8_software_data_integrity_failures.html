@@ -1,0 +1,364 @@
+<!--
+OWASP Top 10 - Software and Data Integrity Failures
+Author: Paul Sommers
+
+VULNERABILITY EXPLANATION:
+This code loads a JavaScript library from an external CDN without any integrity verification.
+This creates multiple critical security vulnerabilities:
+
+1. Supply Chain Attack: If the CDN is compromised, malicious code could be injected
+2. Man-in-the-Middle (MITM): Attackers could intercept and modify the script in transit
+3. CDN Compromise: The CDN provider itself could be hacked or malicious
+4. DNS Hijacking: Attackers could redirect cdn.example.com to a malicious server
+5. No Version Control: The script at this URL could change at any time
+
+Real-world examples:
+- British Airways breach (2018): Attackers modified a third-party script, stealing customer data
+- Magecart attacks: Inject credit card skimmers into e-commerce sites via compromised scripts
+- Event-Stream incident (2018): npm package compromised to steal cryptocurrency
+
+An attacker who compromises the CDN or performs MITM can:
+- Steal user credentials and session tokens
+- Inject malware or cryptocurrency miners
+- Redirect users to phishing sites
+- Steal sensitive data (credit cards, personal info)
+- Deface the website
+- Distribute ransomware
+
+Reference: https://owasp.org/Top10/A08_2021-Software_and_Data_Integrity_Failures/
+-->
+
+<!-- ========================================================================
+     VULNERABLE CODE
+     ======================================================================== -->
+
+<!--
+<script src="https://cdn.example.com/lib.js"></script>
+-->
+
+<!-- ========================================================================
+     SECURE FIXED CODE
+     ======================================================================== -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure External Resource Loading</title>
+    
+    <!--
+        SOLUTION 1: Subresource Integrity (SRI)
+        
+        SRI allows browsers to verify that resources loaded from CDNs haven't been tampered with.
+        The browser computes the hash of the downloaded file and compares it to the integrity attribute.
+        If they don't match, the resource is blocked.
+        
+        Security features:
+        - Cryptographic verification of resource integrity
+        - Protection against CDN compromise
+        - Protection against MITM attacks
+        - Browser will refuse to execute modified scripts
+        
+        How to generate SRI hash:
+        1. Download the exact version of the library you want to use
+        2. Generate hash: openssl dgst -sha384 -binary lib.js | openssl base64 -A
+        3. Or use online tool: https://www.srihash.org/
+        
+        Reference: https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
+    -->
+    
+    <!-- Example: Loading jQuery 3.6.0 with SRI -->
+    <script 
+        src="https://code.jquery.com/jquery-3.6.0.min.js"
+        integrity="sha384-vtXRMe3mGCbOeY7l30aIg8H9p3GdeSe4IFlP6G8JMa7o7lXvnz3GFKzPxzJdPfGK"
+        crossorigin="anonymous">
+    </script>
+    
+    <!--
+        EXPLANATION OF ATTRIBUTES:
+        
+        integrity="sha384-..."
+        - Contains the cryptographic hash of the expected file content
+        - Format: [algorithm]-[base64-encoded-hash]
+        - Supported algorithms: sha256, sha384, sha512 (sha384 recommended)
+        - Browser verifies downloaded file matches this hash
+        
+        crossorigin="anonymous"
+        - Required for SRI to work with cross-origin resources
+        - Requests resource without sending credentials
+        - Enables CORS (Cross-Origin Resource Sharing)
+        - Browser can access and verify the resource
+    -->
+    
+    <!--
+        SOLUTION 2: Self-Hosting Critical Resources
+        
+        For maximum security and reliability, host critical resources on your own infrastructure.
+        This eliminates dependency on third-party CDNs.
+        
+        Advantages:
+        - Complete control over the code
+        - No external dependencies
+        - Better privacy (no tracking by CDN providers)
+        - Works offline or if CDN is down
+        - No risk of CDN compromise
+        
+        Implementation:
+        1. Download library files to your server
+        2. Serve from your own domain
+        3. Use version control (Git) to track changes
+        4. Implement Content Security Policy (CSP)
+    -->
+    
+    <!-- Example: Self-hosted library -->
+    <script src="/js/vendor/library-v1.2.3.min.js"></script>
+    
+    <!--
+        SOLUTION 3: Content Security Policy (CSP)
+        
+        CSP is a security layer that helps detect and mitigate certain types of attacks,
+        including XSS and data injection attacks. It controls which resources can be loaded.
+        
+        Reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
+    -->
+    
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' https://code.jquery.com;
+        style-src 'self' https://fonts.googleapis.com;
+        font-src 'self' https://fonts.gstatic.com;
+        img-src 'self' data: https:;
+        connect-src 'self';
+        frame-ancestors 'none';
+        base-uri 'self';
+        form-action 'self';
+    ">
+    
+    <!--
+        CSP DIRECTIVES EXPLAINED:
+        
+        default-src 'self'
+        - Default policy: only load resources from same origin
+        
+        script-src 'self' https://code.jquery.com
+        - Scripts can load from own domain and jQuery CDN only
+        - Blocks inline scripts and eval() by default (good security practice)
+        
+        style-src 'self' https://fonts.googleapis.com
+        - Stylesheets from own domain and Google Fonts only
+        
+        font-src 'self' https://fonts.gstatic.com
+        - Fonts from own domain and Google Fonts CDN
+        
+        img-src 'self' data: https:
+        - Images from own domain, data URIs, and HTTPS sources
+        
+        connect-src 'self'
+        - AJAX, WebSocket, EventSource limited to same origin
+        
+        frame-ancestors 'none'
+        - Prevents page from being embedded in iframes (clickjacking protection)
+        
+        base-uri 'self'
+        - Restricts base tag to prevent base tag hijacking
+        
+        form-action 'self'
+        - Forms can only submit to same origin
+    -->
+    
+    <!--
+        SOLUTION 4: Using Specific Versions (Version Pinning)
+        
+        Always use specific version numbers, never use 'latest' or unversioned URLs.
+        This prevents automatic updates that could introduce malicious code.
+    -->
+    
+    <!-- BAD: Unversioned URL could change at any time -->
+    <!-- <script src="https://cdn.example.com/library.js"></script> -->
+    
+    <!-- BAD: 'latest' could suddenly include malicious code -->
+    <!-- <script src="https://cdn.example.com/library/latest/lib.js"></script> -->
+    
+    <!-- GOOD: Specific version with SRI -->
+    <script 
+        src="https://cdn.example.com/library/1.2.3/lib.min.js"
+        integrity="sha384-HASH_VALUE_HERE"
+        crossorigin="anonymous">
+    </script>
+    
+</head>
+<body>
+    <h1>Secure External Resource Loading Demonstrations</h1>
+    
+    <!--
+        SOLUTION 5: Monitoring and Dependency Management
+        
+        For production applications, implement:
+        
+        1. Dependency Scanning:
+           - Use tools like npm audit, Snyk, or OWASP Dependency-Check
+           - Regularly scan for known vulnerabilities
+           - Update dependencies when security patches are released
+        
+        2. Software Bill of Materials (SBOM):
+           - Document all third-party dependencies
+           - Track versions and sources
+           - Monitor for security advisories
+        
+        3. Automated Monitoring:
+           - Set up alerts for dependency vulnerabilities
+           - Use GitHub Dependabot or similar services
+           - Regular security audits
+        
+        4. Least Privilege:
+           - Only include necessary libraries
+           - Remove unused dependencies
+           - Minimize external dependencies
+    -->
+    
+    <script>
+        /**
+         * SOLUTION 6: Runtime Integrity Verification
+         * 
+         * For additional security, verify loaded libraries at runtime.
+         * This can detect if a library was modified after loading.
+         */
+        
+        // Example: Verify jQuery was loaded correctly
+        if (typeof jQuery === 'undefined') {
+            console.error('jQuery failed to load or was blocked!');
+            // Fallback or error handling
+        } else if (jQuery.fn.jquery !== '3.6.0') {
+            console.error('Unexpected jQuery version detected!');
+            // Alert security team, use fallback
+        } else {
+            console.log('jQuery loaded successfully and verified');
+        }
+        
+        /**
+         * Example: Detect if script was modified
+         * (This is a simplified example; real implementations are more complex)
+         */
+        function verifyLibraryIntegrity(libraryObject, expectedProperties) {
+            for (let prop of expectedProperties) {
+                if (!(prop in libraryObject)) {
+                    console.error(`Expected property '${prop}' not found in library!`);
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        // Verify critical library functions exist
+        const jQueryExpectedProps = ['ajax', 'get', 'post', 'each'];
+        if (!verifyLibraryIntegrity(jQuery, jQueryExpectedProps)) {
+            console.error('jQuery integrity check failed!');
+        }
+    </script>
+    
+    <!--
+        COMPLETE SECURE EXAMPLE:
+        Combining all security measures for maximum protection
+    -->
+    
+    <!-- React with SRI, specific version, and CSP -->
+    <script 
+        src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"
+        integrity="sha384-/JYRm/T+j7JCxU/VmP4qvHNyiQZ3JuU8sXPPMRm2cDdG6vVyOkZuPxPvDvF9OKw0"
+        crossorigin="anonymous"
+        defer>
+    </script>
+    
+    <script 
+        src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"
+        integrity="sha384-1CldH5F8kPpCwPmLYYfB9G9QmG8MnLLbxJvVnWqXFvHKy+s6VlVxU7lm0fzkiJ/R"
+        crossorigin="anonymous"
+        defer>
+    </script>
+    
+</body>
+</html>
+
+<!--
+HOW THIS FIX ADDRESSES THE VULNERABILITY:
+
+1. Subresource Integrity (SRI):
+   - Cryptographic verification of resource integrity
+   - Browser computes hash and compares to integrity attribute
+   - Blocks execution if hash doesn't match
+   - Protects against CDN compromise and MITM attacks
+
+2. Content Security Policy (CSP):
+   - Whitelist-based approach to allowed resource sources
+   - Blocks unauthorized scripts from executing
+   - Prevents inline scripts (XSS protection)
+   - Monitors and reports policy violations
+
+3. Version Pinning:
+   - Uses specific version numbers (1.2.3, not 'latest')
+   - Prevents unexpected updates
+   - Allows security team to review changes before updating
+   - Provides reproducible builds
+
+4. CORS Configuration:
+   - crossorigin="anonymous" enables SRI for cross-origin resources
+   - Allows browser to verify resource integrity
+   - Prevents credential leakage to CDNs
+
+5. Self-Hosting Critical Resources:
+   - Eliminates external dependencies
+   - Complete control over code
+   - Better privacy and reliability
+   - Works when CDNs are unavailable
+
+6. Runtime Verification:
+   - Verifies library loaded correctly
+   - Detects unexpected modifications
+   - Enables fallback mechanisms
+   - Provides monitoring and alerting
+
+7. Defense in Depth:
+   - Multiple layers of security (SRI + CSP + version pinning)
+   - If one layer fails, others provide protection
+   - Comprehensive security approach
+
+SECURITY IMPROVEMENTS:
+- Immune to CDN compromise (verified with SRI)
+- Protected against MITM attacks
+- Cannot load unauthorized scripts (CSP)
+- Predictable behavior (version pinning)
+- Reduced attack surface (minimal dependencies)
+- Better privacy (self-hosting option)
+- Monitoring and alerting capabilities
+
+HOW TO IMPLEMENT IN PRODUCTION:
+
+1. Audit all external resources
+2. Generate SRI hashes for each resource
+3. Implement CSP headers (start with report-only mode)
+4. Consider self-hosting critical libraries
+5. Use dependency management tools
+6. Set up monitoring and alerts
+7. Regular security reviews and updates
+
+TOOLS FOR SRI:
+
+Command line:
+$ wget https://code.jquery.com/jquery-3.6.0.min.js
+$ openssl dgst -sha384 -binary jquery-3.6.0.min.js | openssl base64 -A
+
+Online:
+- https://www.srihash.org/
+- https://report-uri.com/home/sri_hash
+
+DEPENDENCIES REQUIRED:
+None - this is pure HTML/JavaScript
+
+References:
+- OWASP Top 10 A08:2021: https://owasp.org/Top10/A08_2021-Software_and_Data_Integrity_Failures/
+- MDN Subresource Integrity: https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
+- MDN Content Security Policy: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
+- W3C SRI Specification: https://www.w3.org/TR/SRI/
+- OWASP Third Party JavaScript: https://cheatsheetseries.owasp.org/cheatsheets/Third_Party_Javascript_Management_Cheat_Sheet.html
+-->
